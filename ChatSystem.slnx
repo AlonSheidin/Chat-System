@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ChatSystem.API/ChatSystem.API.csproj" />
+    <Project Path="src/ChatSystem.Application/ChatSystem.Application.csproj" />
+    <Project Path="src/ChatSystem.Domain/ChatSystem.Domain.csproj" />
+    <Project Path="src/ChatSystem.Infrastructure/ChatSystem.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ChatSystem.IntegrationTests/ChatSystem.IntegrationTests.csproj" />
+  </Folder>
+</Solution>
