@@ -3,9 +3,11 @@ import { useAuth } from '../context/AuthContext';
 import { useChat } from '../context/ChatContext';
 import { 
   MessageSquare, Users, Settings, Search, Send, Plus, 
-  Phone, Video, MoreVertical, Paperclip, Smile, LogOut
+  Phone, Video, MoreVertical, Paperclip, Smile, LogOut, UserPlus
 } from 'lucide-react';
 import { format } from 'date-fns';
+import CreateChatModal from '../components/CreateChatModal';
+import AddMemberModal from '../components/AddMemberModal';
 
 const ChatPage: React.FC = () => {
   const { user, logout } = useAuth();
@@ -16,6 +18,8 @@ const ChatPage: React.FC = () => {
 
   const [messageInput, setMessageInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -40,6 +44,9 @@ const ChatPage: React.FC = () => {
 
   return (
     <div className="app-container">
+      {showCreateModal && <CreateChatModal onClose={() => setShowCreateModal(false)} />}
+      {showAddMemberModal && <AddMemberModal onClose={() => setShowAddMemberModal(false)} />}
+
       {/* Sidebar 1: Discord-style Nav */}
       <div className="sidebar-nav">
         <div style={{ width: '48px', height: '48px', backgroundColor: '#5865f2', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -57,7 +64,7 @@ const ChatPage: React.FC = () => {
         <div style={{ padding: '16px', borderBottom: '1px solid rgba(0,0,0,0.2)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <h2 style={{ fontSize: '18px' }}>Messages</h2>
-            <Plus size={20} style={{ cursor: 'pointer' }} />
+            <Plus size={20} style={{ cursor: 'pointer' }} onClick={() => setShowCreateModal(true)} />
           </div>
           <div style={{ backgroundColor: '#202225', display: 'flex', alignItems: 'center', padding: '8px', borderRadius: '4px' }}>
             <Search size={16} color="#b9bbbe" style={{ marginRight: '8px' }} />
@@ -71,7 +78,7 @@ const ChatPage: React.FC = () => {
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto' }}>
-          {chats.map(chat => (
+          {chats.filter(c => (c.name || 'Private Chat').toLowerCase().includes(searchQuery.toLowerCase())).map(chat => (
             <div 
               key={chat.id} 
               onClick={() => setActiveChat(chat)}
@@ -127,7 +134,8 @@ const ChatPage: React.FC = () => {
                   <div style={{ fontSize: '12px', color: '#43b581' }}>Online</div>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '20px', color: '#b9bbbe' }}>
+              <div style={{ display: 'flex', gap: '20px', color: '#b9bbbe', alignItems: 'center' }}>
+                {activeChat.isGroup && <UserPlus size={20} style={{ cursor: 'pointer' }} onClick={() => setShowAddMemberModal(true)} />}
                 <Phone size={20} style={{ cursor: 'pointer' }} />
                 <Video size={20} style={{ cursor: 'pointer' }} />
                 <Search size={20} style={{ cursor: 'pointer' }} />

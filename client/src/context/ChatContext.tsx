@@ -20,7 +20,8 @@ interface ChatContextType {
   typingUsers: string[];
   sendMessage: (content: string) => Promise<void>;
   sendTyping: () => Promise<void>;
-  createChat: (name: string, isGroup: boolean, memberIds: string[]) => Promise<void>;
+  createChat: (name: string, isGroup: boolean, memberIds: string[]) => Promise<any>;
+  addMember: (chatId: string, userId: string) => Promise<void>;
   refreshChats: () => Promise<void>;
 }
 
@@ -87,10 +88,24 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const createChat = async (name: string, isGroup: boolean, memberIds: string[]) => {
     try {
-      await axiosInstance.post('/chats', { name, isGroup, memberIds });
+      const response = await axiosInstance.post('/chats', { name, isGroup, memberIds });
       await refreshChats();
+      return response.data;
     } catch (err) {
       console.error('Failed to create chat', err);
+    }
+  };
+
+  const addMember = async (chatId: string, userId: string) => {
+    try {
+      await axiosInstance.post(`/chats/${chatId}/members`, { userId });
+      await refreshChats();
+      // If adding to the active chat, we might want to refresh its member list in the UI
+      if (activeChat?.id === chatId) {
+        setActiveChat({ ...activeChat, memberIds: [...activeChat.memberIds, userId] });
+      }
+    } catch (err) {
+      console.error('Failed to add member', err);
     }
   };
 
@@ -108,6 +123,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       sendMessage,
       sendTyping,
       createChat,
+      addMember,
       refreshChats
     }}>
       {children}

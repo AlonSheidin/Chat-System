@@ -1,66 +1,61 @@
 # ChatSystem Project Context
 
-A production-grade scalable chat system built with .NET 10.0, following Clean Architecture principles. Currently, **Phase 1: Modular Monolith** is fully complete and verified.
+A production-grade scalable chat system built with .NET 10.0 and React, following Clean Architecture principles.
 
-## Project Overview
+## 🚀 Current Status: Phase 1 & 1.5 (Completed)
 
-- **Purpose:** Real-time chat platform supporting authentication, group/private chats, messaging, and real-time notifications.
-- **Architecture:** Modular Monolith using Clean Architecture.
-  - `src/ChatSystem.Domain`: Core domain entities (User, Chat, Message, ChatMember).
-  - `src/ChatSystem.Application`: Business logic abstractions (Interfaces) and Data Transfer Objects (DTOs).
-  - `src/ChatSystem.Infrastructure`: External concerns (EF Core DbContext, Authentication, Repositories, Connection Tracking, Redis preparation).
-  - `src/ChatSystem.API`: Entry point, REST Controllers, and SignalR Hubs.
+### **Backend (Modular Monolith)**
+- **Auth:** JWT-based registration and login with BCrypt hashing.
+- **User Management:** Search users, profile retrieval.
+- **Messaging:** CRUD for chats and messages.
+- **Real-time:** SignalR hub for persistent real-time messaging, presence tracking, and typing indicators.
+- **Persistence:** PostgreSQL (EF Core).
+- **Testing:** 10 integration tests verifying core flows.
 
-## 🚀 Status: Phase 1 (Completed)
-- **Authentication:** JWT-based registration and login with BCrypt hashing.
-- **User Management:** Search users by username/email, profile retrieval.
-- **Messaging:** 
-  - REST API for chat management and message history.
-  - **Unified Real-time:** Messages sent via SignalR are validated, persisted to PostgreSQL, and broadcasted.
-- **Real-time Features:**
-  - **Presence:** Global online/offline tracking with synchronization for new connections.
-  - **Typing Indicators:** Visual feedback when users are typing in specific chats.
-- **Testing:** 10 comprehensive integration tests covering Auth, Chats, Users, and SignalR Hub logic.
+### **Frontend (React Client)**
+- **UI:** Modern dark-mode interface (Discord/WhatsApp hybrid).
+- **Functionality:** 
+  - Integrated with SignalR for instant updates.
+  - Chat management (Create chats, add members).
+  - Global presence and typing feedback.
+
+## Project Structure
+- `src/ChatSystem.Domain`: Core entities.
+- `src/ChatSystem.Application`: Business logic abstractions and DTOs.
+- `src/ChatSystem.Infrastructure`: Persistence, SignalR connection tracking, and external services.
+- `src/ChatSystem.API`: REST endpoints and SignalR Hub.
+- `client/`: React (TypeScript) frontend.
 
 ## Building and Running
 
-### Infrastructure Setup
+### 1. Infrastructure (Docker)
 ```bash
 docker compose up -d
 ```
-Starts PostgreSQL, Redis, and pgAdmin.
 
-### Database Migrations
+### 2. Database
 ```bash
 dotnet ef database update -p src/ChatSystem.Infrastructure -s src/ChatSystem.API
 ```
 
-### Running the Application
+### 3. Start Backend
 ```bash
-# Start Backend
 dotnet run --project src/ChatSystem.API
+```
 
-# Start Frontend (in a new terminal)
+### 4. Start Frontend
+```bash
 cd client
 npm run dev
 ```
-API: `http://localhost:5230` | Swagger: `/swagger` | WebSockets: `/ws`
-Frontend: `http://localhost:5173` (or the port shown by Vite)
-
-### Manual Testing
-1. Open the frontend in your browser.
-2. Register/Login to get started.
-3. Open multiple tabs/windows to test real-time features.
-4. Use `tests/ChatSystem.ManualTests/index.html` for low-level SignalR debugging if needed.
 
 ## Development Conventions
-- **Clean Architecture:** Domain has zero dependencies. Logic is interface-driven.
-- **Async First:** All I/O operations are asynchronous.
-- **Thread Safety:** Singleton services (like `ConnectionTracker`) use thread-safe collections and locking for nested data.
-- **Local Testing:** Supports `"UseInMemoryDatabase": "true"` in `appsettings.json` for quick verification.
+- **Clean Architecture:** Strictly separate layers.
+- **Async First:** All I/O is asynchronous.
+- **State Management:** React Context for Auth and Chat states.
+- **Throttling:** Client-side debouncing for user search and typing indicators.
 
 ## Key Abstractions
-- `IAuthService`, `IUserService`, `IChatService`: Core business logic.
-- `IUserRepository`, `IChatRepository`, `IMessageRepository`: Data persistence.
-- `IConnectionTracker`: Manages user-to-socket mapping for presence.
-- `IJwtProvider`: Centralized security token generation.
+- `IAuthService`, `IUserService`, `IChatService`: Application logic.
+- `IConnectionTracker`: Singleton managing socket-to-user mapping.
+- `ChatContext`: Unified frontend state for real-time data.
