@@ -60,6 +60,26 @@ public class ChatsController : ControllerBase
         }
     }
 
+    [HttpPost("{chatId}/members")]
+    public async Task<IActionResult> AddMember(Guid chatId, [FromBody] AddMemberRequest request)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await _chatService.AddMemberToChatAsync(userId, chatId, request.UserId);
+            return Ok(new { message = "User added successfully." });
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     [HttpPost("{chatId}/messages")]
     public async Task<IActionResult> SendMessage(Guid chatId, [FromBody] SendMessageRequest request)
     {

@@ -60,6 +60,47 @@ public class ChatService : IChatService
             request.MemberIds?.Concat(new[] { userId }).Distinct().ToList() ?? new List<Guid> { userId });
     }
 
+    public async Task<IEnumerable<ChatResponse>> GetUserChatsAsync(Guid userId)
+    {
+        var chats = await _chatRepository.GetByUserIdAsync(userId);
+        return chats.Select(c => new ChatResponse(
+            c.Id,
+            c.Name,
+            c.IsGroup,
+            c.Members.Select(m => m.UserId).ToList()
+        ));
+    }
+
+    public async Task AddMemberToChatAsync(Guid userId, Guid chatId, Guid newMemberId)
+    {
+        // 1. Check if the current user is a member/admin of the chat
+        if (!await _chatRepository.IsMemberAsync(chatId, userId))
+        {
+            throw new UnauthorizedAccessException("User is not a member of this chat.");
+        }
+
+        // 2. Check if the chat exists and is a group
+        var chat = await _chatRepository.GetByIdAsync(chatId);
+        if (chat == null) throw new Exception("Chat not found.");
+        if (!chat.IsGroup) throw new Exception("Cannot add members to a private chat.");
+
+        // 3. Check if the new member is already there
+        if (await _chatRepository.IsMemberAsync(chatId, newMemberId))
+        {
+            throw new Exception("User is already a member of this chat.");
+        }
+
+        // 4. Add the member
+        await _chatRepository.AddMemberAsync(new ChatMember
+        {
+            ChatId = chatId,
+            UserId = newMemberId,
+            Role = MemberRole.Member
+        });
+
+        await _chatRepository.SaveChangesAsync();
+    }
+
     public async Task<MessageResponse> SendMessageAsync(Guid userId, Guid chatId, SendMessageRequest request)
     {
         if (!await _chatRepository.IsMemberAsync(chatId, userId))
@@ -101,7 +142,7 @@ public class ChatService : IChatService
     {
         if (!await _chatRepository.IsMemberAsync(chatId, userId))
         {
-             return null; // or throw
+            return null; // or throw
         }
 
         var chat = await _chatRepository.GetByIdAsync(chatId);

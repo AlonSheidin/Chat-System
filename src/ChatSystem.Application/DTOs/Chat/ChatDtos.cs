@@ -2,15 +2,28 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ChatSystem.Application.DTOs.Chat;
 
-public record CreateChatRequest(
-    [Required] string Name, // Optional for private, but let's require for groups
-    bool IsGroup,
-    List<Guid> MemberIds
-);
+public class CreateChatRequest
+{
+    [Required] 
+    public string Name { get; set; } = string.Empty;
+    public bool IsGroup { get; set; }
+    public List<Guid> MemberIds { get; set; } = new();
+}
 
-public record SendMessageRequest(
-    [Required] string Content
-);
+public class SendMessageRequest
+{
+    [Required] 
+    public string Content { get; set; } = string.Empty;
+
+    public SendMessageRequest() { }
+    public SendMessageRequest(string content) => Content = content;
+}
+
+public class AddMemberRequest
+{
+    [Required] 
+    public Guid UserId { get; set; }
+}
 
 public record ChatResponse(
     Guid Id,

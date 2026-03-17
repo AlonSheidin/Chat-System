@@ -21,6 +21,14 @@ public class ChatRepository : IChatRepository
             .FirstOrDefaultAsync(c => c.Id == id);
     }
 
+    public async Task<IEnumerable<Chat>> GetByUserIdAsync(Guid userId)
+    {
+        return await _context.Chats
+            .Include(c => c.Members)
+            .Where(c => c.Members.Any(m => m.UserId == userId))
+            .ToListAsync();
+    }
+
     public async Task AddAsync(Chat chat)
     {
         await _context.Chats.AddAsync(chat);

@@ -30,6 +30,12 @@
     <h2>ChatSystem Test Client</h2>
 
     <div id="connectionStatus" class="status disconnected">Disconnected</div>
+    
+    <div id="presenceList" style="margin-bottom: 15px; font-size: 0.9em; color: #555;">
+        Online Users: <span id="onlineCount">0</span>
+    </div>
+
+    <div id="typingIndicator" style="height: 20px; font-style: italic; color: #888; font-size: 0.8em; margin-bottom: 5px;"></div>
 
     <div class="section">
         <label for="jwtToken">JWT Token</label>
@@ -62,6 +68,11 @@
     const jwtInput = document.getElementById('jwtToken');
     const chatIdInput = document.getElementById('chatId');
     const messageInput = document.getElementById('messageContent');
+    const onlineCountSpan = document.getElementById('onlineCount');
+    const typingIndicator = document.getElementById('typingIndicator');
+
+    let onlineUsers = new Set();
+    let typingTimeout = null;
 
     connectBtn.addEventListener('click', () => {
         const token = jwtInput.value.trim();
@@ -74,6 +85,7 @@
             .withAutomaticReconnect()
             .build();
 
+        // 1. Receive Messages
         connection.on("ReceiveMessage", (msg) => {
             const msgElement = document.createElement('div');
             msgElement.classList.add('message');
@@ -84,6 +96,33 @@
             `;
             messagesDiv.appendChild(msgElement);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        });
+
+        // 2. Presence: Initial list
+        connection.on("InitialOnlineUsers", (userIds) => {
+            userIds.forEach(id => onlineUsers.add(id));
+            onlineCountSpan.textContent = onlineUsers.size;
+        });
+
+        // 3. Presence: User Online
+        connection.on("UserOnline", (userId) => {
+            onlineUsers.add(userId);
+            onlineCountSpan.textContent = onlineUsers.size;
+        });
+
+        // 4. Presence: User Offline
+        connection.on("UserOffline", (userId) => {
+            onlineUsers.delete(userId);
+            onlineCountSpan.textContent = onlineUsers.size;
+        });
+
+        // 4. Typing Indicator
+        connection.on("UserTyping", (data) => {
+            typingIndicator.textContent = `${data.username || 'Someone'} is typing...`;
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
+                typingIndicator.textContent = "";
+            }, 3000);
         });
 
         connection.start()
@@ -100,6 +139,19 @@
                 console.error(err);
                 alert('Connection failed: ' + err.message);
             });
+    });
+
+    // Notify server when typing
+    let lastTypingTime = 0;
+    messageInput.addEventListener('input', () => {
+        const chatId = chatIdInput.value.trim();
+        if (!chatId) return;
+
+        const now = Date.now();
+        if (now - lastTypingTime > 2000) { // Throttle typing events to every 2 seconds
+            connection.invoke("SendTyping", chatId).catch(err => console.error(err));
+            lastTypingTime = now;
+        }
     });
 
     joinBtn.addEventListener('click', () => {

@@ -70,11 +70,13 @@ public static class DependencyInjection
             });
 
         // Services
+        services.AddSingleton<IConnectionTracker, ConnectionTracker>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IChatRepository, ChatRepository>();
         services.AddScoped<IMessageRepository, MessageRepository>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IChatService, ChatService>();
+        services.AddScoped<IUserService, UserService>();
         services.AddScoped<IJwtProvider, JwtProvider>();
 
         // Redis (prepare for future)
