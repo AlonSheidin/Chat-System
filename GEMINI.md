@@ -37,12 +37,21 @@ dotnet ef database update -p src/ChatSystem.Infrastructure -s src/ChatSystem.API
 
 ### Running the Application
 ```bash
+# Start Backend
 dotnet run --project src/ChatSystem.API
+
+# Start Frontend (in a new terminal)
+cd client
+npm run dev
 ```
 API: `http://localhost:5230` | Swagger: `/swagger` | WebSockets: `/ws`
+Frontend: `http://localhost:5173` (or the port shown by Vite)
 
 ### Manual Testing
-Open `tests/ChatSystem.ManualTests/index.html` in multiple browser windows to test real-time presence, typing, and messaging.
+1. Open the frontend in your browser.
+2. Register/Login to get started.
+3. Open multiple tabs/windows to test real-time features.
+4. Use `tests/ChatSystem.ManualTests/index.html` for low-level SignalR debugging if needed.
 
 ## Development Conventions
 - **Clean Architecture:** Domain has zero dependencies. Logic is interface-driven.

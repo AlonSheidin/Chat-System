@@ -1,0 +1,87 @@
+:root {
+  --bg-dark-1: #1e2124; /* Sidebar 1 */
+  --bg-dark-2: #2f3136; /* Sidebar 2 */
+  --bg-dark-3: #36393f; /* Main Chat */
+  --bg-dark-4: #202225; /* Header / Profile */
+  --text-primary: #ffffff;
+  --text-secondary: #b9bbbe;
+  --accent-blue: #007bff;
+  --accent-green: #43b581;
+  --whatsapp-bubble-out: #056162;
+  --whatsapp-bubble-in: #262d31;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: var(--bg-dark-3);
+  color: var(--text-primary);
+  overflow: hidden;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  outline: none;
+}
+
+input {
+  outline: none;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #202225;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #18191c;
+}
+
+.app-container {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* Layout Parts */
+.sidebar-nav {
+  width: 72px;
+  background-color: var(--bg-dark-1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0;
+  gap: 12px;
+}
+
+.sidebar-chats {
+  width: 240px;
+  background-color: var(--bg-dark-2);
+  display: flex;
+  flex-direction: column;
+}
+
+.main-chat {
+  flex: 1;
+  background-color: var(--bg-dark-3);
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-profile {
+  width: 280px;
+  background-color: var(--bg-dark-2);
+  border-left: 1px solid rgba(255,255,255,0.05);
+}
