@@ -11,7 +11,7 @@ A production-grade scalable chat system built with .NET 10.0 and React, followin
 - **Persistence:** PostgreSQL with Entity Framework Core.
 - **Infrastructure:** Docker-ready environment (PostgreSQL, Redis, pgAdmin).
 
-### Phase 1.5: React Frontend (Completed)
+### Phase 1.5: React Frontend 
 - **Modern UI:** Hybrid Discord/WhatsApp design with dark mode.
 - **Features:** 
   - Real-time chat with message history.
