@@ -13,6 +13,7 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 builder.Services.AddSignalR();
+builder.Services.AddHostedService<ChatSystem.API.Services.SignalRDispatcher>();
 
 builder.Services.AddCors(options =>
 {

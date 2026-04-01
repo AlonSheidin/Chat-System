@@ -2,27 +2,18 @@
 
 A production-grade scalable chat system built with .NET 10.0 and React, following Clean Architecture principles.
 
-## 🚀 Current Status: Phase 2 (Completed)
+## 🚀 Current Status: Phase 3 (Completed)
 
-### **Backend (Modular Monolith + Redis)**
+### **Backend (Distributed Monolith)**
+- **Horizontal Scaling:** Implemented **Redis Pub/Sub** for cross-instance communication.
+- **SignalR Dispatcher:** Background service synchronizes messages, presence, and typing events across all server instances.
 - **Auth:** JWT-based registration and login with BCrypt hashing.
-- **User Management:** Search users, profile retrieval enriched with **Real-time Status and Last Seen** info.
-- **Messaging:** 
-  - CRUD for chats and messages.
-  - **Message Caching:** Implemented Cache-Aside pattern using **Redis Lists**. Caches last 50 messages per chat with a 10-minute TTL.
-- **Real-time:** SignalR hub for messaging, presence tracking, and typing indicators.
-- **Redis Integration:**
-  - **Presence:** Global online/offline tracking stored in Redis.
-  - **Fail-safe:** System automatically falls back to PostgreSQL if Redis is unavailable.
+- **Caching:** Redis List-based message caching (last 50 messages/chat).
 - **Persistence:** PostgreSQL (EF Core).
-- **Testing:** 10 integration tests verifying core flows.
 
 ### **Frontend (React Client)**
-- **UI:** Modern dark-mode interface (Discord/WhatsApp hybrid).
-- **Functionality:** 
-  - Integrated with SignalR for instant updates.
-  - Chat management (Create chats, add members).
-  - Global presence and typing feedback.
+- **Dynamic Configuration:** Supports multiple backend instances via `VITE_API_URL` environment variable.
+- **Real-time UI:** Instant updates for messaging, presence, and typing across the cluster.
 
 ## Project Structure
 - `src/ChatSystem.Domain`: Core entities.

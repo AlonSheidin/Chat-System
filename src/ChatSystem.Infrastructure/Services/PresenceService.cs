@@ -6,11 +6,29 @@ public enum UserStatus
     Online
 }
 
+/// <summary>
+/// Service for managing global user online status and last seen timestamps in Redis.
+/// </summary>
 public interface IPresenceService
 {
+    /// <summary>
+    /// Updates the status and last seen time for a user.
+    /// </summary>
     Task SetUserStatusAsync(Guid userId, UserStatus status);
+
+    /// <summary>
+    /// Gets the current online/offline status of a user.
+    /// </summary>
     Task<UserStatus> GetUserStatusAsync(Guid userId);
+
+    /// <summary>
+    /// Gets the last recorded UTC timestamp when the user was active.
+    /// </summary>
     Task<DateTime?> GetLastSeenAsync(Guid userId);
+
+    /// <summary>
+    /// Filters a list of user IDs to return only those currently marked as Online.
+    /// </summary>
     Task<IEnumerable<Guid>> GetOnlineUsersAsync(IEnumerable<Guid> userIds);
 }
 

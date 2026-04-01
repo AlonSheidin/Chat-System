@@ -3,11 +3,29 @@ using ChatSystem.Application.DTOs.Chat;
 
 namespace ChatSystem.Infrastructure.Services;
 
+/// <summary>
+/// Service for caching recent chat messages in Redis to reduce database load.
+/// </summary>
 public interface IMessageCache
 {
+    /// <summary>
+    /// Retrieves the most recent messages for a chat from Redis.
+    /// </summary>
     Task<IEnumerable<MessageResponse>?> GetRecentMessagesAsync(Guid chatId);
+
+    /// <summary>
+    /// Populates the cache with a full list of recent messages.
+    /// </summary>
     Task SetRecentMessagesAsync(Guid chatId, IEnumerable<MessageResponse> messages);
+
+    /// <summary>
+    /// Appends a single message to the chat's cache and trims the list if necessary.
+    /// </summary>
     Task AddMessageAsync(Guid chatId, MessageResponse message);
+
+    /// <summary>
+    /// Removes cached messages for a specific chat.
+    /// </summary>
     Task InvalidateAsync(Guid chatId);
 }
 

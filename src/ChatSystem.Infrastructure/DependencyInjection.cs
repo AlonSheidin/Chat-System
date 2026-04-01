@@ -86,8 +86,20 @@ public static class DependencyInjection
         var redisConnectionString = configuration.GetConnectionString("Redis");
         if (!string.IsNullOrEmpty(redisConnectionString))
         {
-            services.AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(redisConnectionString));
-            services.AddSingleton<IRedisService, RedisService>();
+            try
+            {
+                var redis = ConnectionMultiplexer.Connect(redisConnectionString);
+                services.AddSingleton<IConnectionMultiplexer>(redis);
+                services.AddSingleton<IRedisService, RedisService>();
+                services.AddSingleton<IPubSubService, RedisPubSubService>();
+            }
+            catch (Exception ex)
+            {
+                // Log or handle the failure - the app will still start but Redis features will fail gracefully
+                Console.WriteLine($"Warning: Could not connect to Redis at startup: {ex.Message}");
+                // We still register the service but it might not be fully functional
+                // Alternatively, we could register a 'NoOp' Redis service
+            }
         }
 
         return services;
