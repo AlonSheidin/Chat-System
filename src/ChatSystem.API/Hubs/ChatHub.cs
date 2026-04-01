@@ -12,22 +12,25 @@ public class ChatHub : Hub
 {
     private readonly IChatService _chatService;
     private readonly IConnectionTracker _tracker;
+    private readonly IPresenceService _presenceService;
 
-    public ChatHub(IChatService chatService, IConnectionTracker tracker)
+    public ChatHub(IChatService chatService, IConnectionTracker tracker, IPresenceService presenceService)
     {
         _chatService = chatService;
         _tracker = tracker;
+        _presenceService = presenceService;
     }
 
     public override async Task OnConnectedAsync()
     {
         var userId = GetUserId();
         await _tracker.AddConnection(userId, Context.ConnectionId);
+        await _presenceService.SetUserStatusAsync(userId, UserStatus.Online);
         
-        // 1. Notify others that user is online
+        // Notify others that user is online
         await Clients.Others.SendAsync("UserOnline", userId);
 
-        // 2. Send the current list of online users to the caller
+        // Send the current list of online users to the caller
         var onlineUsers = await _tracker.GetOnlineUsers();
         await Clients.Caller.SendAsync("InitialOnlineUsers", onlineUsers);
         
@@ -41,6 +44,7 @@ public class ChatHub : Hub
 
         if (!await _tracker.IsUserOnline(userId))
         {
+            await _presenceService.SetUserStatusAsync(userId, UserStatus.Offline);
             await Clients.Others.SendAsync("UserOffline", userId);
         }
 

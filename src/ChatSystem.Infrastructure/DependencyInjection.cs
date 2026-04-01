@@ -12,6 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using StackExchange.Redis;
 
 namespace ChatSystem.Infrastructure;
 
@@ -60,7 +61,7 @@ public static class DependencyInjection
                         var accessToken = context.Request.Query["access_token"];
                         var path = context.HttpContext.Request.Path;
                         if (!string.IsNullOrEmpty(accessToken) &&
-                            (path.StartsWithSegments("/ws")))
+                            path.StartsWithSegments("/ws"))
                         {
                             context.Token = accessToken;
                         }
@@ -71,6 +72,8 @@ public static class DependencyInjection
 
         // Services
         services.AddSingleton<IConnectionTracker, ConnectionTracker>();
+        services.AddSingleton<IPresenceService, PresenceService>();
+        services.AddSingleton<IMessageCache, MessageCache>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IChatRepository, ChatRepository>();
         services.AddScoped<IMessageRepository, MessageRepository>();
@@ -79,11 +82,13 @@ public static class DependencyInjection
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IJwtProvider, JwtProvider>();
 
-        // Redis (prepare for future)
-        services.AddStackExchangeRedisCache(options =>
+        // Redis
+        var redisConnectionString = configuration.GetConnectionString("Redis");
+        if (!string.IsNullOrEmpty(redisConnectionString))
         {
-            options.Configuration = configuration.GetConnectionString("Redis");
-        });
+            services.AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(redisConnectionString));
+            services.AddSingleton<IRedisService, RedisService>();
+        }
 
         return services;
     }

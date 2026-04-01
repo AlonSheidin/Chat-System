@@ -8,6 +8,14 @@ public class CreateChatRequest
     public string Name { get; set; } = string.Empty;
     public bool IsGroup { get; set; }
     public List<Guid> MemberIds { get; set; } = new();
+
+    public CreateChatRequest() { }
+    public CreateChatRequest(string name, bool isGroup, List<Guid> memberIds)
+    {
+        Name = name;
+        IsGroup = isGroup;
+        MemberIds = memberIds;
+    }
 }
 
 public class SendMessageRequest
@@ -23,6 +31,9 @@ public class AddMemberRequest
 {
     [Required] 
     public Guid UserId { get; set; }
+
+    public AddMemberRequest() { }
+    public AddMemberRequest(Guid userId) => UserId = userId;
 }
 
 public record ChatResponse(

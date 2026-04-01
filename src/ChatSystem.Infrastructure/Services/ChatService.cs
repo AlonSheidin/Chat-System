@@ -3,6 +3,7 @@ using ChatSystem.Application.Interfaces.Repositories;
 using ChatSystem.Application.Interfaces.Services;
 using ChatSystem.Domain.Entities;
 using ChatSystem.Domain.Enums;
+using Microsoft.Extensions.Logging;
 
 namespace ChatSystem.Infrastructure.Services;
 
@@ -11,12 +12,21 @@ public class ChatService : IChatService
     private readonly IChatRepository _chatRepository;
     private readonly IMessageRepository _messageRepository;
     private readonly IUserRepository _userRepository;
+    private readonly IMessageCache _messageCache;
+    private readonly ILogger<ChatService> _logger;
 
-    public ChatService(IChatRepository chatRepository, IMessageRepository messageRepository, IUserRepository userRepository)
+    public ChatService(
+        IChatRepository chatRepository, 
+        IMessageRepository messageRepository, 
+        IUserRepository userRepository,
+        IMessageCache messageCache,
+        ILogger<ChatService> logger)
     {
         _chatRepository = chatRepository;
         _messageRepository = messageRepository;
         _userRepository = userRepository;
+        _messageCache = messageCache;
+        _logger = logger;
     }
 
     public async Task<ChatResponse> CreateChatAsync(Guid userId, CreateChatRequest request)
@@ -121,7 +131,19 @@ public class ChatService : IChatService
         await _messageRepository.AddAsync(message);
         await _messageRepository.SaveChangesAsync();
 
-        return new MessageResponse(message.Id, message.ChatId, message.SenderId, user.Username, message.Content, message.SentAt);
+        var response = new MessageResponse(message.Id, message.ChatId, message.SenderId, user.Username, message.Content, message.SentAt);
+
+        // Update Cache (Fail-safe)
+        try
+        {
+            await _messageCache.AddMessageAsync(chatId, response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update message cache for chat {ChatId}", chatId);
+        }
+
+        return response;
     }
 
     public async Task<IEnumerable<MessageResponse>> GetMessagesAsync(Guid userId, Guid chatId)
@@ -131,11 +153,37 @@ public class ChatService : IChatService
             throw new UnauthorizedAccessException("User is not a member of this chat.");
         }
 
-        var messages = await _messageRepository.GetByChatIdAsync(chatId);
+        // 1. Check Cache
+        try
+        {
+            var cachedMessages = await _messageCache.GetRecentMessagesAsync(chatId);
+            if (cachedMessages != null)
+            {
+                return cachedMessages;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get messages from cache for chat {ChatId}", chatId);
+        }
 
-        return messages.Select(m => new MessageResponse(
+        // 2. Fetch from DB
+        var messages = await _messageRepository.GetByChatIdAsync(chatId);
+        var response = messages.Select(m => new MessageResponse(
             m.Id, m.ChatId, m.SenderId, m.Sender.Username, m.Content, m.SentAt
-        ));
+        )).ToList();
+
+        // 3. Store in Cache
+        try
+        {
+            await _messageCache.SetRecentMessagesAsync(chatId, response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to set message cache for chat {ChatId}", chatId);
+        }
+
+        return response;
     }
     
     public async Task<ChatResponse?> GetChatAsync(Guid userId, Guid chatId)

@@ -7,10 +7,12 @@ namespace ChatSystem.Infrastructure.Services;
 public class UserService : IUserService
 {
     private readonly IUserRepository _userRepository;
+    private readonly IPresenceService _presenceService;
 
-    public UserService(IUserRepository userRepository)
+    public UserService(IUserRepository userRepository, IPresenceService presenceService)
     {
         _userRepository = userRepository;
+        _presenceService = presenceService;
     }
 
     public async Task<UserResponse?> GetByIdAsync(Guid id)
@@ -18,12 +20,24 @@ public class UserService : IUserService
         var user = await _userRepository.GetByIdAsync(id);
         if (user == null) return null;
 
-        return new UserResponse(user.Id, user.Username, user.Email);
+        var status = await _presenceService.GetUserStatusAsync(id);
+        var lastSeen = await _presenceService.GetLastSeenAsync(id);
+
+        return new UserResponse(user.Id, user.Username, user.Email, status.ToString(), lastSeen);
     }
 
     public async Task<IEnumerable<UserResponse>> SearchAsync(string query)
     {
         var users = await _userRepository.SearchAsync(query);
-        return users.Select(u => new UserResponse(u.Id, u.Username, u.Email));
+        var response = new List<UserResponse>();
+
+        foreach (var user in users)
+        {
+            var status = await _presenceService.GetUserStatusAsync(user.Id);
+            var lastSeen = await _presenceService.GetLastSeenAsync(user.Id);
+            response.Add(new UserResponse(user.Id, user.Username, user.Email, status.ToString(), lastSeen));
+        }
+
+        return response;
     }
 }
