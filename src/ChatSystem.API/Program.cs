@@ -1,5 +1,7 @@
 using ChatSystem.API.Hubs;
+using ChatSystem.API.Workers;
 using ChatSystem.Infrastructure;
+using ChatSystem.Infrastructure.Services;
 using Microsoft.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,7 +15,7 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 builder.Services.AddSignalR();
-builder.Services.AddHostedService<ChatSystem.API.Services.SignalRDispatcher>();
+builder.Services.AddHostedService<NotificationWorker>();
 
 builder.Services.AddCors(options =>
 {
@@ -23,7 +25,7 @@ builder.Services.AddCors(options =>
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
-        
+
         // For testing, allow everything (NOT for production!)
         policy.SetIsOriginAllowed(_ => true)
               .AllowAnyHeader()
@@ -35,6 +37,13 @@ builder.Services.AddCors(options =>
 builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
+
+// Ensure Kafka topics are created
+using (var scope = app.Services.CreateScope())
+{
+    var kafkaInitializer = scope.ServiceProvider.GetRequiredService<IKafkaTopicInitializer>();
+    await kafkaInitializer.EnsureTopicsCreatedAsync();
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

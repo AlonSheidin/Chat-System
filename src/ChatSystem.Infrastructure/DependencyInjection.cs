@@ -7,6 +7,7 @@ using ChatSystem.Infrastructure.Options;
 using ChatSystem.Infrastructure.Persistence;
 using ChatSystem.Infrastructure.Repositories;
 using ChatSystem.Infrastructure.Services;
+using ChatSystem.Infrastructure.Workers;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -35,6 +36,7 @@ public static class DependencyInjection
 
         // Options
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
+        services.Configure<KafkaOptions>(configuration.GetSection(KafkaOptions.SectionName));
 
         // Authentication
         var jwtOptions = configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>();
@@ -74,6 +76,13 @@ public static class DependencyInjection
         services.AddSingleton<IConnectionTracker, ConnectionTracker>();
         services.AddSingleton<IPresenceService, PresenceService>();
         services.AddSingleton<IMessageCache, MessageCache>();
+        services.AddSingleton<IEventProducer, KafkaEventProducer>();
+        services.AddSingleton<IEventConsumer, KafkaEventConsumer>();
+        services.AddSingleton<IKafkaTopicInitializer, KafkaTopicInitializer>();
+
+        // Workers
+        services.AddHostedService<MessageWorker>();
+        
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IChatRepository, ChatRepository>();
         services.AddScoped<IMessageRepository, MessageRepository>();
@@ -91,7 +100,6 @@ public static class DependencyInjection
                 var redis = ConnectionMultiplexer.Connect(redisConnectionString);
                 services.AddSingleton<IConnectionMultiplexer>(redis);
                 services.AddSingleton<IRedisService, RedisService>();
-                services.AddSingleton<IPubSubService, RedisPubSubService>();
             }
             catch (Exception ex)
             {

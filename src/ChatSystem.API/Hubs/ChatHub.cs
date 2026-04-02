@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using ChatSystem.Application.DTOs.Chat;
 using ChatSystem.Application.DTOs.Events;
+using ChatSystem.Application.Interfaces;
 using ChatSystem.Application.Interfaces.Services;
 using ChatSystem.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -9,9 +10,10 @@ using Microsoft.AspNetCore.SignalR;
 namespace ChatSystem.API.Hubs;
 
 /// <summary>
-/// SignalR Hub for handling real-time WebSocket communication.
-/// In this distributed architecture, the Hub publishes events to Redis Pub/Sub 
-/// which are then picked up by all instances via the SignalRDispatcher.
+/// The WebSocket Gateway for the Chat System.
+/// Responsibilities: WebSocket management, Auth validation, Event publishing.
+/// In this event-driven architecture, the Hub publishes raw events to Kafka.
+/// It does NOT write directly to the database.
 /// </summary>
 [Authorize]
 public class ChatHub : Hub
@@ -19,22 +21,22 @@ public class ChatHub : Hub
     private readonly IChatService _chatService;
     private readonly IConnectionTracker _tracker;
     private readonly IPresenceService _presenceService;
-    private readonly IPubSubService _pubSub;
+    private readonly IEventProducer _eventProducer;
 
     public ChatHub(
         IChatService chatService, 
         IConnectionTracker tracker, 
         IPresenceService presenceService,
-        IPubSubService pubSub)
+        IEventProducer eventProducer)
     {
         _chatService = chatService;
         _tracker = tracker;
         _presenceService = presenceService;
-        _pubSub = pubSub;
+        _eventProducer = eventProducer;
     }
 
     /// <summary>
-    /// Handles a new client connection, updates global presence, and syncs initial state.
+    /// Handles a new client connection, updates local/global presence, and syncs initial state.
     /// </summary>
     public override async Task OnConnectedAsync()
     {
@@ -42,8 +44,9 @@ public class ChatHub : Hub
         await _tracker.AddConnection(userId, Context.ConnectionId);
         await _presenceService.SetUserStatusAsync(userId, UserStatus.Online);
         
-        // Notify others globally
-        await _pubSub.PublishAsync("user:presence", new UserPresenceEvent { UserId = userId, Status = "Online" });
+        // Publish presence event to Kafka
+        await _eventProducer.PublishAsync("user.presence", userId.ToString(), new SystemEvent(
+            "user.online", userId, GetUsername(), null, DateTime.UtcNow));
 
         // Local state sync for the caller
         var onlineUsers = await _tracker.GetOnlineUsers();
@@ -63,7 +66,10 @@ public class ChatHub : Hub
         if (!await _tracker.IsUserOnline(userId))
         {
             await _presenceService.SetUserStatusAsync(userId, UserStatus.Offline);
-            await _pubSub.PublishAsync("user:presence", new UserPresenceEvent { UserId = userId, Status = "Offline" });
+            
+            // Publish presence event to Kafka
+            await _eventProducer.PublishAsync("user.presence", userId.ToString(), new SystemEvent(
+                "user.offline", userId, GetUsername(), null, DateTime.UtcNow));
         }
 
         await base.OnDisconnectedAsync(exception);
@@ -75,6 +81,7 @@ public class ChatHub : Hub
     public async Task JoinChat(string chatId)
     {
         var userId = GetUserId();
+        // Still use service for basic membership validation at the gateway level
         if (await _chatService.GetChatAsync(userId, Guid.Parse(chatId)) != null)
         {
             await Groups.AddToGroupAsync(Context.ConnectionId, chatId);
@@ -90,32 +97,32 @@ public class ChatHub : Hub
     }
 
     /// <summary>
-    /// Saves a message to the database and publishes it to the global Redis channel for delivery.
+    /// Publishes a message to Kafka for asynchronous processing and persistence.
+    /// Does NOT write to the DB directly.
     /// </summary>
     public async Task SendMessage(string chatId, string message)
     {
         var userId = GetUserId();
-        var response = await _chatService.SendMessageAsync(userId, Guid.Parse(chatId), new SendMessageRequest(message));
-        
-        // Publish to global Redis channel
-        await _pubSub.PublishAsync("chat:messages", new ChatMessageEvent { Message = response });
+        var chatGuid = Guid.Parse(chatId);
+
+        Console.WriteLine($"[Gateway] Received message from {userId} for chat {chatId}: {message}");
+
+        // Publish to Kafka. We partition by chatId to ensure message order.
+        await _eventProducer.PublishAsync("message.send", chatId, new MessageSendEvent(
+            chatGuid, userId, message, DateTime.UtcNow));
     }
 
     /// <summary>
-    /// Broadcasts a typing notification to other members of the chat group.
+    /// Broadcasts a typing notification to other members of the chat group via Kafka.
     /// </summary>
     public async Task SendTyping(string chatId)
     {
         var userId = GetUserId();
-        var username = Context.User?.FindFirst(ClaimTypes.GivenName)?.Value;
+        var username = GetUsername();
+        var chatGuid = Guid.Parse(chatId);
 
-        // Publish to global Redis channel
-        await _pubSub.PublishAsync("chat:typing", new UserTypingEvent 
-        { 
-            ChatId = chatId, 
-            UserId = userId, 
-            Username = username ?? "Unknown" 
-        });
+        await _eventProducer.PublishAsync("typing.events", chatId, new SystemEvent(
+            "typing.started", userId, username, chatGuid, DateTime.UtcNow));
     }
 
     private Guid GetUserId()
@@ -124,4 +131,6 @@ public class ChatHub : Hub
         if (idClaim == null) throw new HubException("Unauthorized");
         return Guid.Parse(idClaim.Value);
     }
+
+    private string? GetUsername() => Context.User?.FindFirst(ClaimTypes.GivenName)?.Value;
 }

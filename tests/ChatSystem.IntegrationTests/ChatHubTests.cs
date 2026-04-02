@@ -2,36 +2,16 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using ChatSystem.Application.DTOs.Auth;
 using ChatSystem.Application.DTOs.Chat;
-using ChatSystem.Infrastructure.Persistence;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.SignalR.Client;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace ChatSystem.IntegrationTests;
 
-public class ChatHubTests : IClassFixture<WebApplicationFactory<Program>>
+public class ChatHubTests : TestBase
 {
-    private readonly WebApplicationFactory<Program> _factory;
-
-    public ChatHubTests(WebApplicationFactory<Program> factory)
+    public ChatHubTests(WebApplicationFactory<Program> factory) : base(factory)
     {
-        _factory = factory.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureAppConfiguration((context, config) =>
-            {
-                config.AddInMemoryCollection(new Dictionary<string, string?>
-                {
-                    ["Jwt:Secret"] = "super_secret_key_that_is_long_enough_for_hmac_sha256",
-                    ["Jwt:Issuer"] = "ChatSystem",
-                    ["Jwt:Audience"] = "ChatSystemClients",
-                    ["Jwt:ExpiryMinutes"] = "60",
-                    ["UseInMemoryDatabase"] = "true"
-                });
-            });
-        });
     }
 
     private async Task<AuthResponse> RegisterAndGetAuth(HttpClient client, string username, string email)
@@ -46,7 +26,7 @@ public class ChatHubTests : IClassFixture<WebApplicationFactory<Program>>
     public async Task SendMessage_ShouldBroadcastToGroupAndSaveToDb()
     {
         // Arrange
-        var client = _factory.CreateClient();
+        var client = Factory.CreateClient();
         var auth = await RegisterAndGetAuth(client, "hubuser", "hub@example.com");
         
         // Create a chat first
@@ -59,7 +39,7 @@ public class ChatHubTests : IClassFixture<WebApplicationFactory<Program>>
             .WithUrl("http://localhost/ws", options =>
             {
                 options.AccessTokenProvider = () => Task.FromResult(auth.Token)!;
-                options.HttpMessageHandlerFactory = _ => _factory.Server.CreateHandler();
+                options.HttpMessageHandlerFactory = _ => Factory.Server.CreateHandler();
             })
             .Build();
 
@@ -73,8 +53,8 @@ public class ChatHubTests : IClassFixture<WebApplicationFactory<Program>>
         await connection.InvokeAsync("SendMessage", chat.Id.ToString(), "Hello from Hub!");
 
         // Assert
-        // Wait a bit for the async broadcast
-        for (int i = 0; i < 10 && receivedMsg == null; i++) await Task.Delay(100);
+        // Wait a bit for the async broadcast via Kafka mock loopback
+        for (int i = 0; i < 20 && receivedMsg == null; i++) await Task.Delay(100);
 
         receivedMsg.Should().NotBeNull();
         receivedMsg!.Content.Should().Be("Hello from Hub!");
