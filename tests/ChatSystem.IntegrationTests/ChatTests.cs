@@ -2,35 +2,15 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using ChatSystem.Application.DTOs.Auth;
 using ChatSystem.Application.DTOs.Chat;
-using ChatSystem.Infrastructure.Persistence;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace ChatSystem.IntegrationTests;
 
-public class ChatTests : IClassFixture<WebApplicationFactory<Program>>
+public class ChatTests : TestBase
 {
-    private readonly WebApplicationFactory<Program> _factory;
-
-    public ChatTests(WebApplicationFactory<Program> factory)
+    public ChatTests(WebApplicationFactory<Program> factory) : base(factory)
     {
-        _factory = factory.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureAppConfiguration((context, config) =>
-            {
-                config.AddInMemoryCollection(new Dictionary<string, string?>
-                {
-                    ["Jwt:Secret"] = "super_secret_key_that_is_long_enough_for_hmac_sha256",
-                    ["Jwt:Issuer"] = "ChatSystem",
-                    ["Jwt:Audience"] = "ChatSystemClients",
-                    ["Jwt:ExpiryMinutes"] = "60",
-                    ["UseInMemoryDatabase"] = "true"
-                });
-            });
-        });
     }
 
     private async Task<AuthResponse> RegisterAndGetAuth(HttpClient client, string username, string email)
@@ -45,7 +25,7 @@ public class ChatTests : IClassFixture<WebApplicationFactory<Program>>
     public async Task CreateChat_ShouldReturnChat()
     {
         // Arrange
-        var client = _factory.CreateClient();
+        var client = Factory.CreateClient();
         var auth = await RegisterAndGetAuth(client, "chatcreator", "creator@example.com");
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", auth.Token);
 
@@ -65,7 +45,7 @@ public class ChatTests : IClassFixture<WebApplicationFactory<Program>>
     public async Task SendMessage_ShouldReturnMessage()
     {
         // Arrange
-        var client = _factory.CreateClient();
+        var client = Factory.CreateClient();
         var auth = await RegisterAndGetAuth(client, "msgsender", "sender@example.com");
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", auth.Token);
 
@@ -89,7 +69,7 @@ public class ChatTests : IClassFixture<WebApplicationFactory<Program>>
     public async Task AddMember_ShouldIncreaseMemberCount()
     {
         // Arrange
-        var client = _factory.CreateClient();
+        var client = Factory.CreateClient();
         var admin = await RegisterAndGetAuth(client, "admin", "admin@test.com");
         var newUser = await RegisterAndGetAuth(client, "newbie", "newbie@test.com");
 
@@ -112,7 +92,7 @@ public class ChatTests : IClassFixture<WebApplicationFactory<Program>>
     public async Task GetMyChats_ShouldReturnChats()
     {
         // Arrange
-        var client = _factory.CreateClient();
+        var client = Factory.CreateClient();
         var auth = await RegisterAndGetAuth(client, "meuser", "me@example.com");
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", auth.Token);
 

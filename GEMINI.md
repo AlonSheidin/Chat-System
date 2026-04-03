@@ -2,24 +2,30 @@
 
 A production-grade scalable chat system built with .NET 10.0 and React, following Clean Architecture principles.
 
-## 🚀 Current Status: Phase 3 (Completed)
+## 🚀 Current Status: Phase 4 (Completed)
 
-### **Backend (Distributed Monolith)**
-- **Horizontal Scaling:** Implemented **Redis Pub/Sub** for cross-instance communication.
-- **SignalR Dispatcher:** Background service synchronizes messages, presence, and typing events across all server instances.
-- **Auth:** JWT-based registration and login with BCrypt hashing.
-- **Caching:** Redis List-based message caching (last 50 messages/chat).
-- **Persistence:** PostgreSQL (EF Core).
+### **Backend (Event-Driven with Kafka)**
+- **Event-Driven Architecture:** Transitioned from synchronous database writes to an asynchronous, event-driven model using **Apache Kafka**.
+- **Service Decoupling:** 
+  - **WebSocket Gateway (Hub):** Lightweight ingestion point that publishes raw events to Kafka.
+  - **Message Worker:** Background service that consumes `message.send` and persists to PostgreSQL.
+  - **Notification Worker:** Background service that consumes `message.stored` and broadcasts to SignalR clients.
+- **Reliability & Scaling:**
+  - **Idempotence:** Kafka `EnableIdempotence = true` ensures no duplicate messages and strict ordering.
+  - **Partitioning:** Messages are partitioned by `chatId`, guaranteeing causal ordering within a chat.
+  - **Consumer Groups:** Scalable workers that can be distributed across multiple instances.
+- **Redis Integration:** Still used for **Presence Tracking**, **Message Caching**, and **Session Storage**.
+- **Testing:** 10 integration tests verified using a custom **MockEventBus loopback**, allowing full flow verification without external infrastructure.
 
 ### **Frontend (React Client)**
-- **Dynamic Configuration:** Supports multiple backend instances via `VITE_API_URL` environment variable.
-- **Real-time UI:** Instant updates for messaging, presence, and typing across the cluster.
+- **UI:** Modern dark-mode interface (Discord/WhatsApp hybrid).
+- **Functionality:** Real-time updates for messages, presence, and typing, now powered by the Kafka-driven backend.
 
 ## Project Structure
 - `src/ChatSystem.Domain`: Core entities.
-- `src/ChatSystem.Application`: Business logic abstractions and DTOs.
-- `src/ChatSystem.Infrastructure`: Persistence, SignalR connection tracking, **Redis Services**, and caching logic.
-- `src/ChatSystem.API`: REST endpoints and SignalR Hub.
+- `src/ChatSystem.Application`: Business logic abstractions, DTOs, and **Event Definitions**.
+- `src/ChatSystem.Infrastructure`: Persistence, **Kafka Producers/Consumers**, and **Background Workers**.
+- `src/ChatSystem.API`: REST endpoints, SignalR Hub, and **Notification Worker**.
 - `client/`: React (TypeScript) frontend.
 
 ## Building and Running
@@ -28,32 +34,25 @@ A production-grade scalable chat system built with .NET 10.0 and React, followin
 ```bash
 docker compose up -d
 ```
-*Note: Ensure Docker is running to start PostgreSQL and Redis.*
+Starts PostgreSQL, Redis, Kafka, and Zookeeper.
 
 ### 2. Database
 ```bash
 dotnet ef database update -p src/ChatSystem.Infrastructure -s src/ChatSystem.API
 ```
 
-### 3. Start Backend
+### 3. Start Application
 ```bash
+# Backend
 dotnet run --project src/ChatSystem.API
-```
 
-### 4. Start Frontend
-```bash
+# Frontend
 cd client
 npm run dev
 ```
 
-## Development Conventions
-- **Clean Architecture:** Strictly separate layers.
-- **Async First:** All I/O is asynchronous.
-- **Caching:** Use `IMessageCache` for read-heavy operations.
-- **Fail-safe:** Always wrap external cache calls in try-catch to ensure availability.
-
 ## Key Abstractions
-- `IRedisService`: Low-level Redis operations.
-- `IPresenceService`: User status and last seen management.
-- `IMessageCache`: Recent message storage.
-- `IConnectionTracker`: Local socket-to-user mapping.
+- `IEventProducer`: Publishes events to Kafka topics.
+- `IEventConsumer`: Subscribes to and processes event streams.
+- `IPresenceService`: Redis-backed global user status.
+- `IMessageCache`: Redis-backed recent message storage.

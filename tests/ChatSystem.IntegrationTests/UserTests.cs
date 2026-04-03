@@ -1,36 +1,15 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using ChatSystem.Application.DTOs.Auth;
-using ChatSystem.Application.DTOs.Chat;
-using ChatSystem.Infrastructure.Persistence;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace ChatSystem.IntegrationTests;
 
-public class UserTests : IClassFixture<WebApplicationFactory<Program>>
+public class UserTests : TestBase
 {
-    private readonly WebApplicationFactory<Program> _factory;
-
-    public UserTests(WebApplicationFactory<Program> factory)
+    public UserTests(WebApplicationFactory<Program> factory) : base(factory)
     {
-        _factory = factory.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureAppConfiguration((context, config) =>
-            {
-                config.AddInMemoryCollection(new Dictionary<string, string?>
-                {
-                    ["Jwt:Secret"] = "super_secret_key_that_is_long_enough_for_hmac_sha256",
-                    ["Jwt:Issuer"] = "ChatSystem",
-                    ["Jwt:Audience"] = "ChatSystemClients",
-                    ["Jwt:ExpiryMinutes"] = "60",
-                    ["UseInMemoryDatabase"] = "true"
-                });
-            });
-        });
     }
 
     private async Task<string> RegisterAndGetToken(HttpClient client, string username, string email)
@@ -46,7 +25,7 @@ public class UserTests : IClassFixture<WebApplicationFactory<Program>>
     public async Task Search_ShouldReturnUsers()
     {
         // Arrange
-        var client = _factory.CreateClient();
+        var client = Factory.CreateClient();
         var token = await RegisterAndGetToken(client, "searchuser", "search@example.com");
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
@@ -64,7 +43,7 @@ public class UserTests : IClassFixture<WebApplicationFactory<Program>>
     public async Task GetById_ShouldReturnUser()
     {
         // Arrange
-        var client = _factory.CreateClient();
+        var client = Factory.CreateClient();
         var request = new RegisterRequest("getuser", "get@example.com", "Password123!");
         var regResponse = await client.PostAsJsonAsync("/auth/register", request);
         var authResponse = await regResponse.Content.ReadFromJsonAsync<AuthResponse>();
