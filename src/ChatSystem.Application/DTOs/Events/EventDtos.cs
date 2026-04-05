@@ -4,6 +4,7 @@ namespace ChatSystem.Application.DTOs.Events;
 /// Event emitted when a user sends a message through the gateway.
 /// </summary>
 public record MessageSendEvent(
+    Guid MessageId,
     Guid ChatId,
     Guid SenderId,
     string Content,

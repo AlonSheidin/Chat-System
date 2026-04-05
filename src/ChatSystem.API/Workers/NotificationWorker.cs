@@ -43,15 +43,13 @@ public class NotificationWorker : BackgroundService
 
         // For broadcasting, we need each instance to be in its own group
         var uniqueGroupId = $"{_kafkaOptions.GroupId}-broadcast-{Guid.NewGuid()}";
-        var topics = new[] { "message.stored", "user.presence", "typing.events" };
+        var topics = new[] { "message.stored", "user.online", "user.offline", "typing.started", "typing.stopped" };
 
         await _consumer.ConsumeAsync(topics, async (key, value) =>
         {
             try
             {
-                // In a production app, we would use a discriminator or Kafka Headers to identify the event type.
-                // For this monolith integration, we check for unique fields in the JSON.
-                if (value.Contains("\"Content\"") && value.Contains("\"SentAt\"")) // MessageStoredEvent
+                if (value.Contains("\"Content\"")) // MessageStoredEvent
                 {
                     await HandleMessageStored(value);
                 }
@@ -59,7 +57,7 @@ public class NotificationWorker : BackgroundService
                 {
                     await HandlePresence(value);
                 }
-                else if (value.Contains("\"typing.started\""))
+                else if (value.Contains("\"typing.started\"") || value.Contains("\"typing.stopped\""))
                 {
                     await HandleTyping(value);
                 }

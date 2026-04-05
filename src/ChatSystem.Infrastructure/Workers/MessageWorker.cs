@@ -50,11 +50,12 @@ public class MessageWorker : BackgroundService
                 using var scope = _serviceProvider.CreateScope();
                 var chatService = scope.ServiceProvider.GetRequiredService<IChatService>();
 
-                // 1. Persist to PostgreSQL
+                // 1. Persist to PostgreSQL using the pre-generated Id for idempotency
                 var response = await chatService.SendMessageAsync(
                     sendEvent.SenderId, 
                     sendEvent.ChatId, 
-                    new SendMessageRequest(sendEvent.Content));
+                    new SendMessageRequest(sendEvent.Content),
+                    sendEvent.MessageId);
 
                 // 2. Emit message.stored event
                 var storedEvent = new MessageStoredEvent(
@@ -67,7 +68,7 @@ public class MessageWorker : BackgroundService
 
                 await _producer.PublishAsync("message.stored", key, storedEvent);
                 
-                _logger.LogInformation("Message saved to DB and 'message.stored' event emitted for Chat: {ChatId}", sendEvent.ChatId);
+                _logger.LogInformation("Message {MessageId} saved to DB and 'message.stored' event emitted.", sendEvent.MessageId);
             }
             catch (Exception ex)
             {

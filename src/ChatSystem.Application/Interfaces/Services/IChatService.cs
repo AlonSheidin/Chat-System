@@ -25,7 +25,7 @@ public interface IChatService
     /// <summary>
     /// Persists a new message to the database and updates the cache.
     /// </summary>
-    Task<MessageResponse> SendMessageAsync(Guid userId, Guid chatId, SendMessageRequest request);
+    Task<MessageResponse> SendMessageAsync(Guid userId, Guid chatId, SendMessageRequest request, Guid? messageId = null);
 
     /// <summary>
     /// Retrieves recent messages for a chat, using cache-aside pattern.

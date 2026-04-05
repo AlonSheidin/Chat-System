@@ -80,6 +80,11 @@ public static class DependencyInjection
         services.AddSingleton<IEventConsumer, KafkaEventConsumer>();
         services.AddSingleton<IKafkaTopicInitializer, KafkaTopicInitializer>();
 
+        // Ingress Buffer
+        services.AddSingleton<KafkaIngressWorker>();
+        services.AddSingleton<IBackgroundEventPublisher>(sp => sp.GetRequiredService<KafkaIngressWorker>());
+        services.AddHostedService(sp => sp.GetRequiredService<KafkaIngressWorker>());
+
         // Workers
         services.AddHostedService<MessageWorker>();
         
