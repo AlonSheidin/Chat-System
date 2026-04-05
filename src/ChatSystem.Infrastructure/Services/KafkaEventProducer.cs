@@ -15,8 +15,8 @@ public class KafkaEventProducer : IEventProducer, IDisposable
 
     /// <summary>
     /// Initializes a new instance of the <see cref="KafkaEventProducer"/> class.
-    /// </summary>
     /// <param name="options">Kafka configuration options.</param>
+    /// </summary>
     public KafkaEventProducer(IOptions<KafkaOptions> options)
     {
         var config = new ProducerConfig
@@ -34,7 +34,7 @@ public class KafkaEventProducer : IEventProducer, IDisposable
     /// <summary>
     /// Publishes an event to a Kafka topic.
     /// </summary>
-    public async Task PublishAsync<T>(string topic, string key, T eventData) where T : class
+    public async Task PublishAsync(string topic, string key, object eventData)
     {
         var payload = JsonSerializer.Serialize(eventData);
         

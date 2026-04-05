@@ -55,6 +55,11 @@ public class KafkaEventConsumer : IEventConsumer
                     // Commit offset only after successful processing
                     consumer.Commit(result);
                 }
+                catch (OperationCanceledException)
+                {
+                    // Normal shutdown, break the loop
+                    break;
+                }
                 catch (ConsumeException ex)
                 {
                     _logger.LogError(ex, "Error consuming Kafka message");
@@ -62,17 +67,13 @@ public class KafkaEventConsumer : IEventConsumer
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Unexpected error in Kafka consumer loop");
-                    // Add a small delay to avoid tight loop on persistent errors
                     await Task.Delay(1000, cancellationToken);
                 }
             }
         }
-        catch (OperationCanceledException)
-        {
-            _logger.LogInformation("Kafka consumer stopping...");
-        }
         finally
         {
+            _logger.LogInformation("Kafka consumer stopping...");
             consumer.Close();
         }
     }

@@ -9,7 +9,7 @@ public class MockEventBus : IEventProducer, IEventConsumer
     private readonly ConcurrentDictionary<string, List<Func<string, string, Task>>> _handlers = new();
 
     // IEventProducer
-    public async Task PublishAsync<T>(string topic, string key, T eventData) where T : class
+    public async Task PublishAsync(string topic, string key, object eventData)
     {
         var json = JsonSerializer.Serialize(eventData);
         if (_handlers.TryGetValue(topic, out var topicHandlers))

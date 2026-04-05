@@ -51,6 +51,11 @@ cd client
 npm run dev
 ```
 
+## Git Conventions
+- **Conventional Commits:** Follow the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/#specification) specification for all commit messages.
+- **Structure:** `type(scope): description`
+- **Common Types:** `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`.
+
 ## Key Abstractions
 - `IEventProducer`: Publishes events to Kafka topics.
 - `IEventConsumer`: Subscribes to and processes event streams.

@@ -97,7 +97,7 @@ public class PresenceTests : TestBase
         await conn1.InvokeAsync("JoinChat", chat!.Id.ToString());
         await conn2.InvokeAsync("JoinChat", chat.Id.ToString());
 
-        // Act
+        // Act - NotificationWorker will loop this back from 'typing.started' topic
         await conn1.InvokeAsync("SendTyping", chat.Id.ToString());
 
         // Assert

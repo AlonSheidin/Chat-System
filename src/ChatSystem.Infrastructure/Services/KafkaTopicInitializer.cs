@@ -30,7 +30,15 @@ public class KafkaTopicInitializer : IKafkaTopicInitializer
         var config = new AdminClientConfig { BootstrapServers = _options.BootstrapServers };
         using var adminClient = new AdminClientBuilder(config).Build();
 
-        var topics = new[] { "message.send", "message.stored", "user.presence", "typing.events" };
+        var topics = new[] 
+        { 
+            "message.send", 
+            "message.stored", 
+            "user.online", 
+            "user.offline", 
+            "typing.started", 
+            "typing.stopped" 
+        };
         
         try
         {

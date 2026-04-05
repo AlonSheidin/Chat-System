@@ -21,18 +21,18 @@ public class ChatHub : Hub
     private readonly IChatService _chatService;
     private readonly IConnectionTracker _tracker;
     private readonly IPresenceService _presenceService;
-    private readonly IEventProducer _eventProducer;
+    private readonly IBackgroundEventPublisher _publisher;
 
     public ChatHub(
         IChatService chatService, 
         IConnectionTracker tracker, 
         IPresenceService presenceService,
-        IEventProducer eventProducer)
+        IBackgroundEventPublisher publisher)
     {
         _chatService = chatService;
         _tracker = tracker;
         _presenceService = presenceService;
-        _eventProducer = eventProducer;
+        _publisher = publisher;
     }
 
     /// <summary>
@@ -45,7 +45,7 @@ public class ChatHub : Hub
         await _presenceService.SetUserStatusAsync(userId, UserStatus.Online);
         
         // Publish presence event to Kafka
-        await _eventProducer.PublishAsync("user.presence", userId.ToString(), new SystemEvent(
+        _publisher.Publish("user.online", userId.ToString(), new SystemEvent(
             "user.online", userId, GetUsername(), null, DateTime.UtcNow));
 
         // Local state sync for the caller
@@ -68,7 +68,7 @@ public class ChatHub : Hub
             await _presenceService.SetUserStatusAsync(userId, UserStatus.Offline);
             
             // Publish presence event to Kafka
-            await _eventProducer.PublishAsync("user.presence", userId.ToString(), new SystemEvent(
+            _publisher.Publish("user.offline", userId.ToString(), new SystemEvent(
                 "user.offline", userId, GetUsername(), null, DateTime.UtcNow));
         }
 
@@ -97,19 +97,18 @@ public class ChatHub : Hub
     }
 
     /// <summary>
-    /// Publishes a message to Kafka for asynchronous processing and persistence.
-    /// Does NOT write to the DB directly.
+    /// Publishes a message to Kafka via the background ingress buffer.
+    /// Generates MessageId here to ensure idempotency in downstream workers.
     /// </summary>
     public async Task SendMessage(string chatId, string message)
     {
         var userId = GetUserId();
         var chatGuid = Guid.Parse(chatId);
+        var messageId = Guid.NewGuid();
 
-        Console.WriteLine($"[Gateway] Received message from {userId} for chat {chatId}: {message}");
-
-        // Publish to Kafka. We partition by chatId to ensure message order.
-        await _eventProducer.PublishAsync("message.send", chatId, new MessageSendEvent(
-            chatGuid, userId, message, DateTime.UtcNow));
+        // Queue for background Kafka production
+        _publisher.Publish("message.send", chatId, new MessageSendEvent(
+            messageId, chatGuid, userId, message, DateTime.UtcNow));
     }
 
     /// <summary>
@@ -121,7 +120,7 @@ public class ChatHub : Hub
         var username = GetUsername();
         var chatGuid = Guid.Parse(chatId);
 
-        await _eventProducer.PublishAsync("typing.events", chatId, new SystemEvent(
+        _publisher.Publish("typing.started", chatId, new SystemEvent(
             "typing.started", userId, username, chatGuid, DateTime.UtcNow));
     }
 

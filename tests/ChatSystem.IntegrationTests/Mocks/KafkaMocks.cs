@@ -4,7 +4,7 @@ namespace ChatSystem.IntegrationTests.Mocks;
 
 public class MockEventProducer : IEventProducer
 {
-    public Task PublishAsync<T>(string topic, string key, T eventData) where T : class
+    public Task PublishAsync(string topic, string key, object eventData)
     {
         // No-op for tests, or we could store in a list for verification
         return Task.CompletedTask;
