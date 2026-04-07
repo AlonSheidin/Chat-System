@@ -1,3 +1,4 @@
+using ChatSystem.Application.Common;
 using ChatSystem.Infrastructure.Options;
 using Confluent.Kafka;
 using Confluent.Kafka.Admin;
@@ -30,15 +31,7 @@ public class KafkaTopicInitializer : IKafkaTopicInitializer
         var config = new AdminClientConfig { BootstrapServers = _options.BootstrapServers };
         using var adminClient = new AdminClientBuilder(config).Build();
 
-        var topics = new[] 
-        { 
-            "message.send", 
-            "message.stored", 
-            "user.online", 
-            "user.offline", 
-            "typing.started", 
-            "typing.stopped" 
-        };
+        var topics = KafkaTopics.All;
         
         try
         {

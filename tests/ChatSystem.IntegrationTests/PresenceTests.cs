@@ -100,9 +100,17 @@ public class PresenceTests : TestBase
         // Act - NotificationWorker will loop this back from 'typing.started' topic
         await conn1.InvokeAsync("SendTyping", chat.Id.ToString());
 
-        // Assert
+        // Assert Typing Started
         for (int i = 0; i < 20 && typingData == null; i++) await Task.Delay(100);
-        typingData.Should().NotBeNull();
+        typingData.Should().Contain("\"isTyping\":true");
+
+        // Act - Typing Stopped
+        typingData = null;
+        await conn1.InvokeAsync("SendTypingStopped", chat.Id.ToString());
+
+        // Assert Typing Stopped
+        for (int i = 0; i < 20 && typingData == null; i++) await Task.Delay(100);
+        typingData.Should().Contain("\"isTyping\":false");
 
         await conn1.StopAsync();
         await conn2.StopAsync();

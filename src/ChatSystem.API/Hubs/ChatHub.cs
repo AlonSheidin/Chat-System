@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using ChatSystem.Application.Common;
 using ChatSystem.Application.DTOs.Chat;
 using ChatSystem.Application.DTOs.Events;
 using ChatSystem.Application.Interfaces;
@@ -45,8 +46,8 @@ public class ChatHub : Hub
         await _presenceService.SetUserStatusAsync(userId, UserStatus.Online);
         
         // Publish presence event to Kafka
-        _publisher.Publish("user.online", userId.ToString(), new SystemEvent(
-            "user.online", userId, GetUsername(), null, DateTime.UtcNow));
+        _publisher.Publish(KafkaTopics.UserOnline, userId.ToString(), new SystemEvent(
+            SystemEventTypes.UserOnline, userId, GetUsername(), null, DateTime.UtcNow));
 
         // Local state sync for the caller
         var onlineUsers = await _tracker.GetOnlineUsers();
@@ -68,8 +69,8 @@ public class ChatHub : Hub
             await _presenceService.SetUserStatusAsync(userId, UserStatus.Offline);
             
             // Publish presence event to Kafka
-            _publisher.Publish("user.offline", userId.ToString(), new SystemEvent(
-                "user.offline", userId, GetUsername(), null, DateTime.UtcNow));
+            _publisher.Publish(KafkaTopics.UserOffline, userId.ToString(), new SystemEvent(
+                SystemEventTypes.UserOffline, userId, GetUsername(), null, DateTime.UtcNow));
         }
 
         await base.OnDisconnectedAsync(exception);
@@ -107,7 +108,7 @@ public class ChatHub : Hub
         var messageId = Guid.NewGuid();
 
         // Queue for background Kafka production
-        _publisher.Publish("message.send", chatId, new MessageSendEvent(
+        _publisher.Publish(KafkaTopics.MessageSend, chatId, new MessageSendEvent(
             messageId, chatGuid, userId, message, DateTime.UtcNow));
     }
 
@@ -120,8 +121,21 @@ public class ChatHub : Hub
         var username = GetUsername();
         var chatGuid = Guid.Parse(chatId);
 
-        _publisher.Publish("typing.started", chatId, new SystemEvent(
-            "typing.started", userId, username, chatGuid, DateTime.UtcNow));
+        _publisher.Publish(KafkaTopics.TypingStarted, chatId, new SystemEvent(
+            SystemEventTypes.TypingStarted, userId, username, chatGuid, DateTime.UtcNow));
+    }
+
+    /// <summary>
+    /// Broadcasts a typing stopped notification to other members of the chat group via Kafka.
+    /// </summary>
+    public async Task SendTypingStopped(string chatId)
+    {
+        var userId = GetUserId();
+        var username = GetUsername();
+        var chatGuid = Guid.Parse(chatId);
+
+        _publisher.Publish(KafkaTopics.TypingStopped, chatId, new SystemEvent(
+            SystemEventTypes.TypingStopped, userId, username, chatGuid, DateTime.UtcNow));
     }
 
     private Guid GetUserId()

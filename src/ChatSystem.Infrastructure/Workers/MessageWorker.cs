@@ -1,3 +1,4 @@
+using ChatSystem.Application.Common;
 using System.Text.Json;
 using ChatSystem.Application.DTOs.Chat;
 using ChatSystem.Application.DTOs.Events;
@@ -40,7 +41,7 @@ public class MessageWorker : BackgroundService
     {
         _logger.LogInformation("MessageWorker starting...");
 
-        await _consumer.ConsumeAsync(new[] { "message.send" }, async (key, value) =>
+        await _consumer.ConsumeAsync(new[] { KafkaTopics.MessageSend }, async (key, value) =>
         {
             try
             {
@@ -66,15 +67,13 @@ public class MessageWorker : BackgroundService
                     response.Content,
                     response.SentAt);
 
-                await _producer.PublishAsync("message.stored", key, storedEvent);
+                await _producer.PublishAsync(KafkaTopics.MessageStored, key, storedEvent);
                 
                 _logger.LogInformation("Message {MessageId} saved to DB and 'message.stored' event emitted.", sendEvent.MessageId);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to process message.send event for key: {Key}", key);
-                // We do NOT throw here to avoid crashing the worker. 
-                // Kafka offset will be committed, but in a production app, we'd send this to a Dead Letter Queue (DLQ).
             }
         }, stoppingToken);
     }

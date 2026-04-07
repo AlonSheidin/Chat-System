@@ -1,4 +1,5 @@
 using System.Text.Json;
+using ChatSystem.Application.Common;
 using ChatSystem.Application.DTOs.Events;
 using ChatSystem.Application.Interfaces;
 using ChatSystem.API.Hubs;
@@ -43,23 +44,22 @@ public class NotificationWorker : BackgroundService
 
         // For broadcasting, we need each instance to be in its own group
         var uniqueGroupId = $"{_kafkaOptions.GroupId}-broadcast-{Guid.NewGuid()}";
-        var topics = new[] { "message.stored", "user.online", "user.offline", "typing.started", "typing.stopped" };
-
-        await _consumer.ConsumeAsync(topics, async (key, value) =>
+        
+        await _consumer.ConsumeAsync(KafkaTopics.Notifications, async (key, value) =>
         {
             try
             {
+                // In a real production app, we would use a discriminator in the JSON or Kafka Headers.
+                // For now, we route based on the presence of specific fields to identify the DTO.
+                
                 if (value.Contains("\"Content\"")) // MessageStoredEvent
                 {
                     await HandleMessageStored(value);
                 }
-                else if (value.Contains("\"user.online\"") || value.Contains("\"user.offline\""))
+                else
                 {
-                    await HandlePresence(value);
-                }
-                else if (value.Contains("\"typing.started\"") || value.Contains("\"typing.stopped\""))
-                {
-                    await HandleTyping(value);
+                    // Everything else is a SystemEvent (Presence or Typing)
+                    await HandleSystemEvent(value);
                 }
             }
             catch (Exception ex)
@@ -75,29 +75,37 @@ public class NotificationWorker : BackgroundService
         if (@event == null) return;
 
         _logger.LogInformation("Broadcasting message from {SenderName} to group {ChatId}", @event.SenderName, @event.ChatId);
-        // Push to everyone in the chat group connected to THIS instance
         await _hubContext.Clients.Group(@event.ChatId.ToString()).SendAsync("ReceiveMessage", @event);
     }
 
-    private async Task HandlePresence(string json)
+    private async Task HandleSystemEvent(string json)
     {
         var @event = JsonSerializer.Deserialize<SystemEvent>(json);
         if (@event == null) return;
 
-        var methodName = @event.Type == "user.online" ? "UserOnline" : "UserOffline";
-        await _hubContext.Clients.All.SendAsync(methodName, @event.UserId);
-    }
-
-    private async Task HandleTyping(string json)
-    {
-        var @event = JsonSerializer.Deserialize<SystemEvent>(json);
-        if (@event == null || @event.ChatId == null) return;
-
-        await _hubContext.Clients.Group(@event.ChatId.Value.ToString()).SendAsync("UserTyping", new 
+        switch (@event.Type)
         {
-            ChatId = @event.ChatId,
-            UserId = @event.UserId,
-            Username = @event.Username
-        });
+            case SystemEventTypes.UserOnline:
+                await _hubContext.Clients.All.SendAsync("UserOnline", @event.UserId);
+                break;
+                
+            case SystemEventTypes.UserOffline:
+                await _hubContext.Clients.All.SendAsync("UserOffline", @event.UserId);
+                break;
+                
+            case SystemEventTypes.TypingStarted:
+            case SystemEventTypes.TypingStopped:
+                if (@event.ChatId != null)
+                {
+                    await _hubContext.Clients.Group(@event.ChatId.Value.ToString()).SendAsync("UserTyping", new 
+                    {
+                        ChatId = @event.ChatId,
+                        UserId = @event.UserId,
+                        Username = @event.Username,
+                        IsTyping = @event.Type == SystemEventTypes.TypingStarted
+                    });
+                }
+                break;
+        }
     }
 }
